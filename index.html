@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MVF Partner Portal re-theme — retrospective</title>
+<style>
+  /* ==========================================================
+     Design tokens (sourced from 10XCX DESIGN.md, used verbatim
+     so this report sits inside the same visual system as the
+     prior loader-concepts review.)
+     ========================================================== */
+  :root {
+    --surface: #FEFFFE;
+    --surface-dim: #F9F9F9;
+    --surface-container: #f3f3f3;
+
+    --on-surface: #051014;
+    --text-primary: #18181C;
+    --text-secondary: #555555;
+    --text-tertiary: #8D8D8D;
+
+    --outline-variant: #e5e5e5;
+    --outline: #999999;
+
+    --primary: #097560;
+    --primary-container: #E7F6F3;
+    --stroke-success: #0DA587;
+    --secondary: #051014;
+    --tertiary: #F9624E;
+    --tertiary-hover: #E8553F;
+    --accent-orange: #FF971A;
+
+    --ai-purple: #673AB7;
+    --ai-purple-light: #8B5CF6;
+    --frost-light: #EFFDFF;
+    --frost-warm: #F7F3FF;
+
+    --gray-50: #f9f9f9;
+    --gray-100: #f3f3f3;
+    --gray-200: #e5e5e5;
+    --gray-300: #cccccc;
+    --gray-400: #999999;
+    --gray-500: #808080;
+    --gray-700: #555555;
+
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-full: 9999px;
+
+    --shadow-card: 0 2px 4px rgba(0,0,0,0.06);
+    --shadow-modal: 0 24px 48px -12px rgba(5, 16, 20, 0.18);
+
+    --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+                  Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-stack);
+    color: var(--text-primary);
+    background: var(--surface-dim);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .page {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+  }
+
+  /* ==========================================================
+     Page header
+     ========================================================== */
+  .page-header { margin-bottom: 32px; }
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-size: 36px;
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 0 0 16px;
+    color: var(--on-surface);
+  }
+  .lede {
+    font-size: 17px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    max-width: 760px;
+    margin: 0;
+  }
+  .lede strong { color: var(--on-surface); font-weight: 600; }
+
+  .header-context {
+    margin-top: 24px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, var(--frost-light), var(--frost-warm));
+    border: 1px solid rgba(103, 58, 183, 0.25);
+    border-radius: var(--radius-lg);
+    max-width: 760px;
+  }
+  .header-context h4 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ai-purple);
+    font-weight: 700;
+  }
+  .header-context p {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin: 0 0 6px;
+  }
+  .header-context p:last-child { margin-bottom: 0; }
+  .header-context strong { color: var(--on-surface); font-weight: 600; }
+  .header-context code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+    background: rgba(255,255,255,0.7);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--ai-purple);
+  }
+
+  /* TOC pills */
+  .toc {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 24px;
+  }
+  .toc a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    border: 1px solid var(--outline-variant);
+    text-decoration: none;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .toc a:hover {
+    border-color: var(--gray-400);
+    box-shadow: var(--shadow-card);
+  }
+  .toc-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ai-purple);
+  }
+  .toc a[data-tone="green"] .toc-dot { background: var(--primary); }
+  .toc a[data-tone="orange"] .toc-dot { background: var(--accent-orange); }
+  .toc a[data-tone="coral"] .toc-dot { background: var(--tertiary); }
+  .toc a[data-tone="neutral"] .toc-dot { background: var(--gray-400); }
+
+  /* ==========================================================
+     Section cards (re-uses "concept" pattern from the source)
+     ========================================================== */
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius-xl);
+    padding: 32px;
+    margin-bottom: 32px;
+    box-shadow: var(--shadow-card);
+  }
+  .section.recommended {
+    border-color: var(--ai-purple);
+    box-shadow: 0 4px 20px -8px rgba(103, 58, 183, 0.25);
+  }
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .section-title { flex: 1; min-width: 280px; }
+  .section-title h2 {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.2;
+    margin: 0 0 6px;
+    color: var(--on-surface);
+  }
+  .section-title .tagline {
+    font-size: 15px;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .badge-recommended { background: var(--ai-purple); color: white; }
+  .badge-warn {
+    background: rgba(255, 151, 26, 0.12);
+    color: var(--accent-orange);
+    border: 1px solid rgba(255, 151, 26, 0.3);
+  }
+  .badge-liked {
+    background: var(--primary-container);
+    color: var(--primary);
+    border: 1px solid rgba(9, 117, 96, 0.18);
+  }
+  .badge-coral {
+    background: rgba(249, 98, 78, 0.10);
+    color: var(--tertiary);
+    border: 1px solid rgba(249, 98, 78, 0.3);
+  }
+
+  /* Body prose */
+  .section p,
+  .section li {
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+  .section p { margin: 0 0 14px; }
+  .section p:last-child { margin-bottom: 0; }
+  .section strong { color: var(--on-surface); font-weight: 600; }
+  .section code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    background: var(--gray-100);
+    padding: 1px 6px;
+    border-radius: 3px;
+    color: var(--on-surface);
+  }
+  .section ul { margin: 0 0 14px; padding-left: 20px; }
+  .section li { margin-bottom: 6px; }
+
+  /* Meta grid for at-a-glance */
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    padding: 18px;
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    margin-bottom: 22px;
+  }
+  .meta-grid h4 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+  .meta-grid p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .meta-grid .strength { color: var(--primary); }
+  .meta-grid .risk { color: var(--tertiary); }
+  .meta-grid .warn { color: var(--accent-orange); }
+  @media (max-width: 640px) {
+    .meta-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Viewport label divider */
+  .viewport-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    margin: 24px 0 12px;
+  }
+  .viewport-label::before {
+    content: "";
+    flex: 0 0 24px;
+    height: 1px;
+    background: var(--outline-variant);
+  }
+  .viewport-label::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--outline-variant);
+  }
+
+  /* Frame for screenshots */
+  .frames-2up {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .frames-3up {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 900px) {
+    .frames-2up, .frames-3up { grid-template-columns: 1fr; }
+  }
+
+  .frame {
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--gray-100);
+    position: relative;
+  }
+  .frame img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .frame-caption {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-top: 1px solid var(--outline-variant);
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    gap: 12px;
+  }
+  .frame-caption strong { color: var(--on-surface); font-weight: 600; }
+  .frame-caption .tag {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color: var(--text-tertiary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* Findings list */
+  .finding {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 16px;
+    padding: 18px 0;
+    border-top: 1px solid var(--outline-variant);
+  }
+  .finding:first-of-type { border-top: none; padding-top: 4px; }
+  .finding-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--gray-100);
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid var(--outline-variant);
+  }
+  .finding[data-tone="warn"] .finding-num {
+    background: rgba(255, 151, 26, 0.12);
+    color: var(--accent-orange);
+    border-color: rgba(255, 151, 26, 0.3);
+  }
+  .finding[data-tone="risk"] .finding-num {
+    background: rgba(249, 98, 78, 0.10);
+    color: var(--tertiary);
+    border-color: rgba(249, 98, 78, 0.3);
+  }
+  .finding[data-tone="ok"] .finding-num {
+    background: var(--primary-container);
+    color: var(--primary);
+    border-color: rgba(9, 117, 96, 0.18);
+  }
+  .finding h3 {
+    margin: 0 0 6px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--on-surface);
+    line-height: 1.3;
+  }
+  .finding p {
+    margin: 0 0 6px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+  }
+  .finding p:last-child { margin-bottom: 0; }
+  .finding-meta {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .finding-meta span::before {
+    content: "·";
+    margin-right: 8px;
+    color: var(--gray-300);
+  }
+  .finding-meta span:first-child::before { content: ""; margin-right: 0; }
+
+  /* Stat row */
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 0 0 22px;
+  }
+  .stat {
+    background: var(--gray-50);
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+  }
+  .stat h4 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    margin: 0 0 4px;
+    font-weight: 600;
+  }
+  .stat .v {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--on-surface);
+    line-height: 1.1;
+    margin: 0;
+  }
+  .stat .sub {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 4px 0 0;
+  }
+  .stat .sub.up { color: var(--primary); }
+  .stat .sub.down { color: var(--tertiary); }
+  @media (max-width: 720px) {
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* Pull quote */
+  .pull-quote {
+    border-left: 3px solid var(--ai-purple);
+    padding: 6px 0 6px 16px;
+    margin: 18px 0;
+    font-size: 15px;
+    color: var(--on-surface);
+    font-style: italic;
+    line-height: 1.55;
+  }
+  .pull-quote cite {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    font-style: normal;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--outline-variant);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  footer a { color: var(--text-secondary); text-decoration: none; border-bottom: 1px solid var(--outline-variant); }
+  footer a:hover { color: var(--on-surface); border-bottom-color: var(--gray-400); }
+
+  /* Anchor offset so sticky nothing — works fine with default scroll */
+  section[id] { scroll-margin-top: 16px; }
+</style>
+</head>
+<body>
+<main class="page">
+
+  <header class="page-header">
+    <div class="eyebrow">Project retrospective · 2026-05-18</div>
+    <h1>Can a DESIGN.md and a "super prompt" re-skin a Lovable app to match a different template?</h1>
+    <p class="lede">
+      We took an existing Lovable build of the <strong>MVF Partner Portal</strong>, remixed it, and asked Lovable to re-theme it to the
+      <strong>MVF Dashboard Template</strong> (Flowbite) using a written design contract and a single prompt. The intent was to test whether a
+      design system can be transferred between two Lovable projects by AI alone — no manual component refactor. The short answer is
+      <strong>partially</strong>: tokens and typography transferred cleanly, but the layout shell and component library did not.
+    </p>
+
+    <div class="header-context">
+      <h4>What changed since the last review</h4>
+      <p><strong>Inputs:</strong> <code>DESIGN.md</code> (design contract) + reference to <code>@Dashboard Template</code> Lovable project + a single super-prompt asking for a phased visual audit.</p>
+      <p><strong>Output:</strong> An 8-phase plan written by Lovable to <code>.lovable/plan.md</code>, then 19 commits over a single day executing it. Final state: dashboard widgets re-built, tokens replaced, sidebar pattern divergent.</p>
+      <p><strong>Why it matters:</strong> If this works near-end-to-end, future re-themes don't need a designer + frontend engineer. If it stops at "tokens but not shell," we need a different process — better contracts, visual diff loops, or both.</p>
+    </div>
+
+    <nav class="toc">
+      <a href="#at-a-glance" data-tone="neutral"><span class="toc-dot"></span>At a glance</a>
+      <a href="#what-we-tested" data-tone="neutral"><span class="toc-dot"></span>What we tested</a>
+      <a href="#how-it-ran"><span class="toc-dot"></span>How it ran</a>
+      <a href="#visual-outcome" data-tone="coral"><span class="toc-dot"></span>Visual outcome</a>
+      <a href="#why-it-fell-short" data-tone="orange"><span class="toc-dot"></span>Why it fell short</a>
+      <a href="#what-did-land" data-tone="green"><span class="toc-dot"></span>What did land</a>
+      <a href="#recommendations"><span class="toc-dot"></span>Recommendations</a>
+    </nav>
+  </header>
+
+  <!-- ====================================================== -->
+  <section id="at-a-glance" class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <h2>At a glance</h2>
+        <p class="tagline">Outcome, scope, and where the headline number lands.</p>
+      </div>
+      <span class="badge badge-warn">Partial match</span>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat">
+        <h4>Dashboard widgets</h4>
+        <p class="v">Rebuilt</p>
+        <p class="sub up">Cards / chart / table all reproduced</p>
+      </div>
+      <div class="stat">
+        <h4>Layout shell</h4>
+        <p class="v">Drawer</p>
+        <p class="sub down">vs. target's permanent navy rail</p>
+      </div>
+      <div class="stat">
+        <h4>Token system</h4>
+        <p class="v">3-tier</p>
+        <p class="sub up">Foundation + semantic + brand-state</p>
+      </div>
+      <div class="stat">
+        <h4>Components swapped to Flowbite</h4>
+        <p class="v">1 / ~50</p>
+        <p class="sub down">Only Input; rest deferred by the model</p>
+      </div>
+    </div>
+
+    <div class="meta-grid">
+      <div>
+        <h4>The goal</h4>
+        <p>Test whether <strong>Lovable can re-theme one of its own projects</strong> to match a different Lovable template using only a written design contract and one prompt — no human-in-the-loop refactor.</p>
+      </div>
+      <div>
+        <h4>The setup</h4>
+        <p>Remixed the existing <strong>MVF Partner Portal</strong>. Provided <code>DESIGN.md</code> (the Dashboard Template's design rules) and the template project as a reference. Asked for a phased visual audit and execution.</p>
+      </div>
+      <div>
+        <h4>What worked <span class="strength">— well</span></h4>
+        <p>Tokens, typography, brand-state colours, Material Symbols icon wrapper, four-theme variant module. Dashboard widget rebuild — same data, same chart, same table layout.</p>
+      </div>
+      <div>
+        <h4>What didn't <span class="risk">— at all</span></h4>
+        <p>The layout shell (permanent navy sidebar + branded topbar). The full <code>flowbite-react</code> component swap. The mass <code>lucide → &lt;Icon&gt;</code> migration. All three were explicitly deferred by the model.</p>
+      </div>
+    </div>
+
+    <p>
+      The honest read: the experiment <em>partially</em> succeeded. The model did exactly what a careful engineer would do — it landed
+      the low-risk, high-leverage changes (tokens, type, palette sweep) and stopped at the boundary where a prompt-driven change
+      would have broken ~50 files. That's defensible, but it's also why the visual result still doesn't look like the template at a
+      glance. The lesson sits between "the AI failed" and "the prompt asked too much."
+    </p>
+  </section>
+
+  <!-- ====================================================== -->
+  <section id="what-we-tested" class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <h2>What we set out to test</h2>
+        <p class="tagline">The hypothesis behind the experiment.</p>
+      </div>
+    </div>
+
+    <p>
+      The team has been exploring whether <strong>design transfer</strong> — moving an established visual system from one product
+      into another — can be automated. The hope: write the design rules once as a <code>DESIGN.md</code> contract, point it at a target
+      project, and let Lovable do the rest. If true, that's a meaningful unlock for every Lovable project that needs to land on the
+      MVF brand.
+    </p>
+
+    <p>The specific hypothesis tested in this experiment was:</p>
+
+    <div class="pull-quote">
+      "If we give Lovable a complete design contract (<code>DESIGN.md</code>) and a reference to the target template project, a single
+      super-prompt should produce a phased plan, and on approval should execute it to within visual parity of the target."
+      <cite>— Hypothesis, as set up in the chat session of 2026-05-15</cite>
+    </div>
+
+    <p>
+      The "super prompt" itself was not a special artefact in the repo. It was the user's message #9 in the chat: an attached
+      <code>DESIGN.md</code> + a reference to the <code>@Dashboard Template</code> Lovable project, plus an instruction to "produce a
+      visual audit and phased plan, do not change code yet." Lovable wrote that audit into <code>.lovable/plan.md</code> — that file <em>is</em>
+      the only durable artefact of the super-prompt response.
+    </p>
+  </section>
+
+  <!-- ====================================================== -->
+  <section id="how-it-ran" class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <h2>How the run actually went</h2>
+        <p class="tagline">Twenty-five messages, eight phases, one day.</p>
+      </div>
+    </div>
+
+    <div class="finding" data-tone="ok">
+      <span class="finding-num">1</span>
+      <div>
+        <h3>Audit was good</h3>
+        <p>
+          Lovable read <code>src/index.css</code> + <code>tailwind.config.ts</code> + <code>AdminShell.tsx</code> and correctly identified the
+          token, typography, icon, theme-variant, and palette deltas vs. the template. The 8-phase plan is in
+          <code>.lovable/plan.md</code> and is essentially what a frontend engineer would have written.
+        </p>
+        <div class="finding-meta">
+          <span>Phases identified: 8</span>
+          <span>Engineering concerns flagged: 6</span>
+          <span>Files audited: 3 anchor files + ~14 component files</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="finding" data-tone="ok">
+      <span class="finding-num">2</span>
+      <div>
+        <h3>Phases 1, 2, 5, 6, 8 executed cleanly</h3>
+        <p>
+          Token foundation (3-tier system: foundation ramps → semantic surfaces → indigo brand-state), typography (Montserrat +
+          Inter, <code>letter-spacing: 0.01rem</code>, dropped global <code>tracking-tight</code>), layout shell tokens, dark-mode
+          selector swap, and the palette sweep across ~14 component files. These are mechanical changes — tokens are very
+          AI-friendly. They all landed.
+        </p>
+      </div>
+    </div>
+
+    <div class="finding" data-tone="warn">
+      <span class="finding-num">3</span>
+      <div>
+        <h3>Phase 3 (Material Symbols) installed but never used in app code</h3>
+        <p>
+          The wrapper component <code>src/components/ui/Icon.tsx</code> was created and the <code>material-symbols</code> package added,
+          but the mass <code>lucide → &lt;Icon&gt;</code> migration in ~40 application files was deferred ("mechanical, awaiting
+          confirmation" — chat #20). So the icon look-and-feel of the app is still <em>lucide stroke-style</em>, not the filled
+          Material Symbols that the template uses.
+        </p>
+      </div>
+    </div>
+
+    <div class="finding" data-tone="risk">
+      <span class="finding-num">4</span>
+      <div>
+        <h3>Phase 4 (flowbite-react) was deliberately scoped down</h3>
+        <p>
+          The model explicitly chose not to do the full Button / Card / Table / Modal swap, citing "~50 files, breaks shadcn APIs
+          (<code>asChild</code>, slot props, variants)". It substituted a single restyled <code>Input</code> component instead. This is the
+          single biggest reason the result doesn't <em>look</em> like the Flowbite template: most chrome is still shadcn primitives
+          in template clothing.
+        </p>
+        <div class="finding-meta">
+          <span>Files that would need touching: ~50</span>
+          <span>Risk of breaking: high (slot/variant API mismatch)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="finding" data-tone="ok">
+      <span class="finding-num">5</span>
+      <div>
+        <h3>Phase 7 (theme variants) landed</h3>
+        <p>
+          <code>src/data/themes.ts</code> ships 4 HSL ramps (Indigo, Cyan, Orange, Pink) plus an <code>applyTheme()</code> +
+          <code>loadStoredTheme()</code> pair wired into <code>main.tsx</code>. A palette-icon dropdown in the topbar lets you flip
+          between them.
+        </p>
+      </div>
+    </div>
+
+    <div class="finding" data-tone="warn">
+      <span class="finding-num">6</span>
+      <div>
+        <h3>"Last chance to get it right" — message #21</h3>
+        <p>
+          When the gap was still obvious after Phase 8, the user pointed Lovable at three project references and asked for the
+          dashboard to be made "like for like." The model responded with a full dashboard widget rebuild
+          (<code>SummaryCard</code>, <code>StatCards</code>, <code>RevenueChart</code>, <code>RecentLeadsTable</code>) — and that <em>did</em> close
+          the widget-level gap. But it didn't touch the layout shell, which is what stakeholders see in the first 200ms.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================== -->
+  <section id="visual-outcome" class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <h2>The visual outcome, side-by-side</h2>
+        <p class="tagline">Same data, same widgets, different shell.</p>
+      </div>
+      <span class="badge badge-coral">Side-by-side</span>
+    </div>
+
+    <p>
+      Both apps render the same dashboard content — a "Lead Generation" view with four stat cards, a 12-month revenue chart, and a
+      recent-leads table. The mock data is identical. What changed is the layout shell around them.
+    </p>
+
+    <div class="viewport-label">Dashboard — target vs. remix outcome</div>
+
+    <div class="frames-2up">
+      <div class="frame">
+        <img src="screenshots/target-template.png" alt="Target: MVF Dashboard Template (Flowbite build)">
+        <div class="frame-caption">
+          <span><strong>Target</strong> — MVF Dashboard Template (Flowbite)</span>
+          <span class="tag">mvf-dashboard-template.lovable.app</span>
+        </div>
+      </div>
+      <div class="frame">
+        <img src="screenshots/remix-outcome.png" alt="Remix outcome — Partner Portal after re-theme">
+        <div class="frame-caption">
+          <span><strong>Remix outcome</strong> — Partner Portal after re-theme</span>
+          <span class="tag">id-preview--dec7dd56…lovable.app</span>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top: 22px;">
+      Look at the chrome, not the cards. The target has a permanent dark-navy sidebar with a dark logo box, a branded topbar
+      with global search, a notifications bell, and a theme/avatar cluster. The remix has none of those — just a hamburger menu
+      icon and the words "Partner Integration Portal" in plain weight. <strong>The first-impression read of the two apps is
+      completely different</strong>, even though the dashboard widgets underneath are structurally identical.
+    </p>
+
+    <div class="viewport-label">Remix — sidebar opened (it does exist, just drawer-style)</div>
+
+    <div class="frames-2up">
+      <div class="frame">
+        <img src="screenshots/remix-sidebar.png" alt="Remix — sidebar drawer opened from hamburger">
+        <div class="frame-caption">
+          <span><strong>Sidebar drawer</strong> — opens over content, has backdrop</span>
+          <span class="tag">After clicking the hamburger</span>
+        </div>
+      </div>
+      <div class="frame">
+        <img src="screenshots/remix-campaigns.png" alt="Remix — Campaigns page">
+        <div class="frame-caption">
+          <span><strong>Campaigns page</strong> — same shell, plain header</span>
+          <span class="tag">/campaigns</span>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top: 22px;">
+      The sidebar <em>does</em> exist in the remix — Material Symbols icons, indigo selected state, MVF logo box at the top, a
+      dark-mode toggle at the bottom. It just slides in from the left as a drawer with a backdrop, instead of being permanently
+      pinned. That's a layout-pattern decision the model made implicitly, because <code>DESIGN.md</code> didn't pin it down.
+    </p>
+  </section>
+
+  <!-- ====================================================== -->
+  <section id="why-it-fell-short" class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <h2>Why it fell short — five root causes</h2>
+        <p class="tagline">All five are addressable. None are about the model being incapable.</p>
+      </div>
+      <span class="badge badge-warn">Honest read</span>
+    </div>
+
+    <div class="finding" data-tone="warn">
+      <span class="finding-num">1</span>
+      <div>
+        <h3>The design contract specified tokens, not <em>layout pattern</em></h3>
+        <p>
+          <code>DESIGN.md</code> defined the brand-state ramp, semantic surfaces, and Material Symbols rules in detail. It did not say
+          "the sidebar is permanent, never collapses, has a 40px dark logo box flush-left, and the topbar starts at the same x-coordinate as the sidebar's right edge." Those are layout assertions, and they were inferred — incorrectly — from a single screenshot reference.
+        </p>
+        <p><strong>Fix:</strong> add a "Layout patterns" section to <code>DESIGN.md</code> that names the shell archetype, not just the colours.</p>
+      </div>
+    </div>
+
+    <div class="finding" data-tone="risk">
+      <span class="finding-num">2</span>
+      <div>
+        <h3>Component-library swap is structurally harder than colour-token swap</h3>
+        <p>
+          Swapping <code>--brand-700</code> across the codebase is a global find-and-replace. Swapping <code>&lt;Button asChild&gt;</code>
+          (shadcn) for <code>&lt;Button as="a"&gt;</code> (flowbite-react) is an API-shape refactor that breaks variant props, slot
+          composition, and the styling system that callers rely on. The model correctly refused to do it via prompt — that's the
+          right call. But it means the experiment's "swap to Flowbite" goal was always going to fail.
+        </p>
+        <p><strong>Fix:</strong> if Flowbite parity is the goal, the target project should be Flowbite-from-day-one. Re-theming an established shadcn app to Flowbite is not a prompt-shaped problem.</p>
+      </div>
+    </div>
+
+    <div class="finding" data-tone="warn">
+      <span class="finding-num">3</span>
+      <div>
+        <h3>No visual-diff feedback loop</h3>
+        <p>
+          The model executed the plan with no way to look at its own output and self-correct. There was no Playwright/Percy
+          screenshot diff, no "compare what you produced to what the target looks like and iterate" step. It worked from a text
+          spec and a memory of one screenshot — and that's a hard mode.
+        </p>
+        <p><strong>Fix:</strong> add a verification step that screenshots the running app at known viewports and asks the model to compare each one against the template before declaring done.</p>
+      </div>
+    </div>
+
+    <div class="finding" data-tone="warn">
+      <span class="finding-num">4</span>
+      <div>
+        <h3>"Phases deferred" was a one-way door, not a checkpoint</h3>
+        <p>
+          When the model flagged Phase 3 (icon mass-migration) and Phase 4 (flowbite swap) as "your call, awaiting confirmation,"
+          the user said "complete all outstanding" (message #19). The model interpreted that as <em>polish + scoping-down</em>,
+          not <em>actually run the deferred phases</em>. So the deferred phases never ran, and the gap they were going to close
+          never closed.
+        </p>
+        <p><strong>Fix:</strong> when a model flags scope-defer, the user-facing wording should make the trade-off explicit: "deferring this means the icons will still look like lucide. Want me to run it anyway?"</p>
+      </div>
+    </div>
+
+    <div class="finding" data-tone="warn">
+      <span class="finding-num">5</span>
+      <div>
+        <h3>"Visual parity" was never quantified</h3>
+        <p>
+          The success criterion was implicit ("like for like"). Without a quantitative target — "at least 9 of 10 reviewers must
+          identify them as the same product within 3 seconds" or similar — the model didn't know when to stop and the reviewer
+          didn't know when to accept.
+        </p>
+        <p><strong>Fix:</strong> name a specific evaluator. Even a 5-shot subjective panel beats no target at all.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================== -->
+  <section id="what-did-land" class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <h2>What did land — the wins worth keeping</h2>
+        <p class="tagline">Most of the token system can be lifted into the next project as-is.</p>
+      </div>
+      <span class="badge badge-liked">Reusable</span>
+    </div>
+
+    <ul>
+      <li>
+        <strong>Three-tier token system</strong> — foundation (<code>--brand-50…900</code>, <code>--gray-50…900</code>) → semantic
+        (<code>--surface-*</code>, <code>--content-*</code>, <code>--border-*</code>, <code>--success/-warning/-danger/-info-*</code>) → indigo
+        brand-state (<code>--brand-default/-hover/-active</code>). Lives in <code>src/index.css</code> and is the cleanest part of the
+        codebase.
+      </li>
+      <li>
+        <strong>Typography</strong> — Montserrat headings + Inter body, <code>letter-spacing: 0.01rem</code>, dropped global
+        <code>tracking-tight</code>, <code>label[for]</code> margin spacing. All four are template-correct.
+      </li>
+      <li>
+        <strong>Theme variants</strong> — <code>src/data/themes.ts</code> ships 4 brand HSL ramps (Indigo, Cyan, Orange, Pink) plus
+        an <code>applyTheme()</code> / <code>loadStoredTheme()</code> pair. Wired to a palette-icon dropdown in the topbar.
+      </li>
+      <li>
+        <strong>Material Symbols wrapper</strong> — <code>src/components/ui/Icon.tsx</code> renders a
+        <code>&lt;span class="material-symbols-outlined"&gt;</code> with <code>fontVariationSettings</code> for FILL / wght / GRAD /
+        opsz. Drop-in ready; just unused in app code.
+      </li>
+      <li>
+        <strong>Palette sweep</strong> — ~14 files moved from <code>bg-blue-100</code> / <code>text-emerald-500</code> /
+        <code>dark:bg-amber-900/30</code> to semantic tokens (<code>bg-info-100</code>, <code>bg-icon-container</code>,
+        <code>bg-[hsl(var(--success-500))]/15</code>). The "stock palette utility on a brand-bound surface" anti-pattern is fully gone.
+      </li>
+      <li>
+        <strong>Dashboard widget rebuild</strong> — the four-up <code>StatCards</code>, the <code>RevenueChart</code> with brand
+        gradients, and the <code>RecentLeadsTable</code> with status badges are visually accurate to the template. The data layer is
+        mocked, but the structure carries.
+      </li>
+    </ul>
+  </section>
+
+  <!-- ====================================================== -->
+  <section id="recommendations" class="section recommended">
+    <div class="section-header">
+      <div class="section-title">
+        <h2>Recommendations for the next attempt</h2>
+        <p class="tagline">Five concrete changes to the process, ranked by impact.</p>
+      </div>
+      <span class="badge badge-recommended">Action items</span>
+    </div>
+
+    <div class="finding" data-tone="ok">
+      <span class="finding-num">1</span>
+      <div>
+        <h3>Ship layout patterns in the design contract, not just tokens</h3>
+        <p>
+          Add a §L "Layout shell" block to <code>DESIGN.md</code>: shell archetype (permanent rail vs. drawer), nav width, topbar height,
+          logo-box position, container padding. These are the bits a screenshot-only contract loses.
+        </p>
+      </div>
+    </div>
+
+    <div class="finding" data-tone="ok">
+      <span class="finding-num">2</span>
+      <div>
+        <h3>Don't ask AI to swap component libraries on an established codebase</h3>
+        <p>
+          For shadcn → flowbite, the right move is to <em>restyle shadcn primitives to look like Flowbite</em> using the tokens.
+          That's what the model attempted with the <code>Input</code> change in Phase 4, and it works. Lock that as the strategy and
+          extend it to Button, Card, Table, Modal — keep the API, change the visuals.
+        </p>
+      </div>
+    </div>
+
+    <div class="finding" data-tone="ok">
+      <span class="finding-num">3</span>
+      <div>
+        <h3>Add a visual-diff verification step before declaring "done"</h3>
+        <p>
+          Screenshot the running app at <code>/</code>, <code>/campaigns</code>, <code>/admin</code> at 1440×900, attach to the
+          conversation, ask the model: "compare these to the template and list every visible delta." Iterate until the list is
+          empty or every remaining item has a deliberate reason.
+        </p>
+      </div>
+    </div>
+
+    <div class="finding" data-tone="ok">
+      <span class="finding-num">4</span>
+      <div>
+        <h3>Make "deferred phases" a checkpoint, not an exit</h3>
+        <p>
+          When the model proposes to defer phases, restate them with their visual consequence: "deferring lucide migration means
+          the icon stroke-weight stays thin and outlines instead of filled — visible deviation from template. Run anyway?" Force
+          the trade-off into the open.
+        </p>
+      </div>
+    </div>
+
+    <div class="finding" data-tone="ok">
+      <span class="finding-num">5</span>
+      <div>
+        <h3>Pin a quantitative success bar</h3>
+        <p>
+          Before the next attempt, name a measurable target: e.g. "five reviewers, given the two URLs blind, identify both as the
+          same product family within 3 seconds." Without that, "good enough" is whoever is loudest in Slack.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Retrospective compiled 2026-05-18 · Source data: 25-message chat log + <code>.lovable/plan.md</code> + live screenshots</span>
+    <span><a href="https://github.com/patrick-mvf/mvf-partner-portal-retheme-retro" target="_blank" rel="noopener">View source on GitHub</a></span>
+  </footer>
+
+</main>
+</body>
+</html>
